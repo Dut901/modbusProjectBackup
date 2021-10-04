@@ -1,2 +1,11 @@
-#include "stdio.h"
-#include "string.h"
+class Database
+{
+public:
+	Database();
+	int dataCon();
+	int getData();
+	void freeCon();
+private:
+
+};
+

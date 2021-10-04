@@ -42,6 +42,9 @@
     <ClInclude Include="libmodbus_32_release\include\database.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="libmodbus_32_release\include\tools.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="libmodbus_32_release\bin\modbus.dll" />
@@ -51,6 +54,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="libmodbus_32_release\main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="libmodbus_32_release\database.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="libmodbus_32_release\tools.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
