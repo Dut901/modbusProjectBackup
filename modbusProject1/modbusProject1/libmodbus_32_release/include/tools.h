@@ -11,5 +11,5 @@ public :
 	void servo_start(modbus_t* mb);
 	void set_speed(modbus_t* mb, int speed_num);
 	void servo_stop(modbus_t* mb);
-	void show_status(modbus_t* mb);
 };
+void show_status(void* mb);

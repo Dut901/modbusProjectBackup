@@ -52,11 +52,7 @@ void Initialize()
 
 
 int _tmain(int argc, _TCHAR* argv[])	
-{
-
-
-	//Database db;
-	//db.dataCon();
+{		
 	Tools tool;
 	modbus_t* mc = NULL;
 	uint16_t tab_reg[8] = {0};
@@ -66,14 +62,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	tool.servo_init(mc);
 
 	Initialize();
-
+	tool.servo_speed_init(mc);
 	while (1) {
 		char const* kb_char;
 		if (_kbhit()) {
 			cin.getline(kb,_MAX_PATH) ;
 			switch (s_mapStringValues[kb]) {
 			case evStringValue1:
-				tool.servo_speed_init(mc);
 				cout << "请输入速度值（r/min）" << endl;
 				int speed;
 				cin >> speed;
@@ -86,7 +81,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				tool.servo_stop(mc);
 				break;
 			case status:
-				tool.show_status(mc);
+				show_status(mc);
 				break;
 			case evEnd:
 				goto endCon;
@@ -99,7 +94,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	endCon:
 	tool.modbus_down(mc);			//释放modbus连接
-
+	endDbcon();
  	system("pause");
 	return 0;
 }

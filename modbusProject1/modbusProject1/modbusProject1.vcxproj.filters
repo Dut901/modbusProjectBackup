@@ -45,9 +45,15 @@
     <ClInclude Include="libmodbus_32_release\include\tools.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="libmodbus_32_release\include\stdAfx.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="libmodbus_32_release\bin\modbus.dll" />
+    <None Include="libmodbus_32_release\bin\pthreadVC3.dll" />
+    <None Include="libmodbus_32_release\bin\pthreadVCE3.dll" />
+    <None Include="libmodbus_32_release\bin\pthreadVSE3.dll" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="libmodbus_32_release\lib\modbus.lib" />

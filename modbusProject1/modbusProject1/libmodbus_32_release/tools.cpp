@@ -10,9 +10,11 @@
 #include "database.h"
 #include "include/database.h"
 #include "include\tools.h"
+
+
 using namespace std;
 
-void getCurDate();
+string getCurDate();
 
 //更改相应的DIn的值
 void modify_DIn(modbus_t* mb, int reg_num, int bit) {
@@ -111,24 +113,7 @@ void Tools::show_data(uint16_t* reg, int num) {
 	}
 }
 
-//显示监控寄存器数据
-void Tools::show_status(modbus_t* mb) {
-	uint16_t tab_reg[2];
-	while (1) {
-		int regs = modbus_read_registers(mb, 0x0012, 2, tab_reg);
 
-		cout << "状态监控寄存器1的数据为:" << tab_reg[1] << tab_reg[0] << "clock";
-		getCurDate();
-
-		regs = modbus_read_registers(mb, 0x0014, 2, tab_reg);
-
-		cout << "状态监控寄存器2的数据为:" << tab_reg[1] << tab_reg[0] << "clock" ;
-		getCurDate();
-		if (_kbhit()) {
-			break;
-		}
-	}
-}
 
 //关闭modbus
 void Tools::modbus_down(modbus_t* mb) {
@@ -140,7 +125,7 @@ void Tools::modbus_down(modbus_t* mb) {
 //速度控制初始化
 void Tools::servo_speed_init(modbus_t* mb) {
 	//DI6 DI7 DI8 置零
-	int regs1, regs2, regs3, regs4, regs5, regs6;
+	int regs1, regs2, regs3, regs4, regs5;
 	regs1 = modbus_write_register(mb, 0x021E, 0);
 	regs2 = modbus_write_register(mb, 0x0220, 0);
 	regs3 = modbus_write_register(mb, 0x0222, 0);
@@ -219,9 +204,75 @@ void Tools::servo_stop(modbus_t* mb)
 	modify_DIn(mb, 1, 0);
 }
 
-void getCurDate()
+string getCurDate()
 {
 	SYSTEMTIME systime;
 	GetLocalTime(&systime);//本地时间
-	cout << systime.wHour << ":" << systime.wMinute << ":" << systime.wSecond << ":" << systime.wMilliseconds << endl;
+	string year, month, day, hour, min, sec, misec, time;
+	char buffer[16];
+	sprintf_s(buffer, "%d", systime.wYear);
+	year = buffer;
+	sprintf_s(buffer, "%d", systime.wMonth);
+	month = buffer;
+	sprintf_s(buffer, "%d", systime.wDay);
+	day = buffer;
+	sprintf_s(buffer,"%d", systime.wHour);
+	hour = buffer;
+	sprintf_s(buffer, "%d", systime.wMinute);
+	min = buffer;
+	sprintf_s(buffer, "%d", systime.wSecond);
+	sec = buffer;
+	sprintf_s(buffer, "%d", systime.wMilliseconds);
+	misec = buffer;
+	time = year + "-" + month + "-" + day + " " + hour + ":" + min + ":" + sec + "." + misec;
+	return time;
+}
+
+//并发线程向数据库写
+/*void* save_servo_status(void* mb) {
+	SYSTEMTIME systime;
+	GetLocalTime(&systime);
+	uint16_t tab_reg[2];
+	uint16_t tab_reg2[2];
+	string sql;
+	databaseCon();
+	modbus_t* modb = (modbus_t*)mb;
+	int i = 0;
+	while (1) {
+		Sleep(2000);
+		int regs = modbus_read_registers(modb, 0x0012, 2, tab_reg);		
+		regs = modbus_read_registers(modb, 0x0014, 2, tab_reg2);
+		sql = "insert into dbo.servo_status values(" + to_string(i) + "," + to_string(tab_reg[1]) + to_string(tab_reg[0]) + "," + to_string(tab_reg2[1]) + to_string(tab_reg2[0]) + "," + getCurDate() + ")";
+		if (_kbhit()) {
+			pthread_exit(NULL);
+		}
+	}
+	return NULL;
+}*/
+
+//显示监控寄存器数据
+void show_status(void* mb) {
+	uint16_t tab_reg[2];
+	uint16_t tab_reg2[2];
+	modbus_t* modb = (modbus_t*)mb;
+	databaseCon();
+	char sql[200] = "select max(id) from dbo.servo_status";
+	Status res = dbSqlSelect(sql);
+	int maxid = res.id[0];
+	while (1) {
+		Sleep(2000);
+		maxid++;
+		int regs = modbus_read_registers(modb, 0x0012, 2, tab_reg);
+
+		cout << "状态监控寄存器1的数据为:" << tab_reg[1] << tab_reg[0] << "clock" << getCurDate() << endl;
+		regs = modbus_read_registers(modb, 0x0014, 2, tab_reg2);
+		cout << "状态监控寄存器2的数据为:" << tab_reg2[1] << tab_reg2[0] << "clock" << getCurDate() << endl;
+		string sql1 = "insert into dbo.servo_status values(" + to_string(maxid) + "," + to_string(tab_reg[1]) + to_string(tab_reg[0]) + "," + to_string(tab_reg2[1]) + to_string(tab_reg2[0]) + ",'" + getCurDate() + "')";
+		strcpy_s(sql, sql1.c_str());
+		dbSqlEdit(sql);
+
+		if (_kbhit()) {
+			break;
+		}
+	}
 }
