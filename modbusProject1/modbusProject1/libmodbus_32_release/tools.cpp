@@ -10,11 +10,14 @@
 #include "database.h"
 #include "include/database.h"
 #include "include\tools.h"
+#include <cassert>
 
 
 using namespace std;
 
 string getCurDate();
+string DecIntToHexStr(long long num);
+int transData(string str);
 
 //更改相应的DIn的值
 void modify_DIn(modbus_t* mb, int reg_num, int bit) {
@@ -254,20 +257,29 @@ string getCurDate()
 void show_status(void* mb) {
 	uint16_t tab_reg[2];
 	uint16_t tab_reg2[2];
+	string trans;
+	long long int decimal;
+	string pulse, speed;
 	modbus_t* modb = (modbus_t*)mb;
 	databaseCon();
 	char sql[200] = "select max(id) from dbo.servo_status";
 	Status res = dbSqlSelect(sql);
 	int maxid = res.id[0];
 	while (1) {
-		Sleep(2000);
+		Sleep(1000);
 		maxid++;
 		int regs = modbus_read_registers(modb, 0x0012, 2, tab_reg);
-
-		cout << "状态监控寄存器1的数据为:" << tab_reg[1] << tab_reg[0] << "clock" << getCurDate() << endl;
+		trans = DecIntToHexStr(tab_reg[1]);
+		decimal = transData(trans);
+		speed = to_string(decimal + tab_reg[0]);
+		cout << "状态监控寄存器1的数据为:" << speed << "clock" << getCurDate() << endl;
 		regs = modbus_read_registers(modb, 0x0014, 2, tab_reg2);
-		cout << "状态监控寄存器2的数据为:" << tab_reg2[1] << tab_reg2[0] << "clock" << getCurDate() << endl;
-		string sql1 = "insert into dbo.servo_status values(" + to_string(maxid) + "," + to_string(tab_reg[1]) + to_string(tab_reg[0]) + "," + to_string(tab_reg2[1]) + to_string(tab_reg2[0]) + ",'" + getCurDate() + "')";
+		trans = DecIntToHexStr(tab_reg2[1]);
+		decimal = transData(trans);
+		pulse = to_string(decimal + tab_reg2[0]);
+		cout << "状态监控寄存器2的数据为:" << pulse << "clock" << getCurDate() << endl;
+		
+		string sql1 = "insert into dbo.servo_status values(" + to_string(maxid) + "," + speed + "," + pulse + ",'" + getCurDate() + "')";
 		strcpy_s(sql, sql1.c_str());
 		dbSqlEdit(sql);
 
@@ -275,4 +287,27 @@ void show_status(void* mb) {
 			break;
 		}
 	}
+}
+
+
+int transData(string str)
+{
+	str = str + "0000";
+
+	int res = strtol(str.c_str() , nullptr, 16);
+	return res;
+}
+
+string DecIntToHexStr(long long num)
+{
+	string str;
+	long long Temp = num / 16;
+	int left = num % 16;
+	if (Temp > 0)
+		str += DecIntToHexStr(Temp);
+	if (left < 10)
+		str += (left + '0');
+	else
+		str += ('A' + left - 10);
+	return str;
 }

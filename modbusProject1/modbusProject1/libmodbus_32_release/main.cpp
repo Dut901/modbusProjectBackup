@@ -14,41 +14,7 @@ using namespace std;
 #pragma comment(lib,"modbus.lib")
 
 
-typedef std::uint64_t hash_t;
-constexpr hash_t prime = 0x100000001B3ull;
-constexpr hash_t basis = 0xCBF29CE484222325ull;
 
-
-static enum StringValue {
-	evNotDefined,
-	evStringValue1,
-	evStringValue2,
-	evStringValue3,
-	status,
-	evEnd
-};
-
-// Map to associate the strings with the enum values
-static std::map<std::string, StringValue> s_mapStringValues;
-
-// User input
-static char kb[_MAX_PATH];
-
-// Intialization
-static void Initialize();
-//switch变量初始化
-void Initialize()
-{
-	s_mapStringValues["speed"] = evStringValue1;
-	s_mapStringValues["start"] = evStringValue2;
-	s_mapStringValues["stop"] = evStringValue3;
-	s_mapStringValues["status"] = status;
-	s_mapStringValues["end"] = evEnd;
-
-	cout << "s_mapStringValues contains "
-		<< s_mapStringValues.size()
-		<< " entries." << endl;
-}
 
 
 int _tmain(int argc, _TCHAR* argv[])	
@@ -57,7 +23,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	modbus_t* mc = NULL;
 	uint16_t tab_reg[8] = {0};
 	mc = tool.modbus_con(3);
-	//modbus_set_debug(mc, 1);
+	modbus_set_debug(mc, 1);
 	tool.time_delay(mc);
 	tool.servo_init(mc);
 
