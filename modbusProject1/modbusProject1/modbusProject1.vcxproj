@@ -153,6 +153,8 @@
     <ClInclude Include="libmodbus_32_release\include\modbus.h" />
     <ClInclude Include="libmodbus_32_release\include\stdAfx.h" />
     <ClInclude Include="libmodbus_32_release\include\tools.h" />
+    <ClInclude Include="libmodbus_32_release\include\PID_incremtental.h" />
+    <ClInclude Include="libmodbus_32_release\include\PID_position.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libmodbus_32_release\bin\modbus.dll" />
@@ -167,6 +169,8 @@
     <ClCompile Include="libmodbus_32_release\database.cpp" />
     <ClCompile Include="libmodbus_32_release\main.cpp" />
     <ClCompile Include="libmodbus_32_release\tools.cpp" />
+    <ClCompile Include="libmodbus_32_release\PID_incremtental.cpp" />
+    <ClCompile Include="libmodbus_32_release\PID_position.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

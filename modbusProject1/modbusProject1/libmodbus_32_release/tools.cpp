@@ -9,9 +9,10 @@
 #include <map>
 #include "database.h"
 #include "include/database.h"
-#include "include\tools.h"
+#include "include/tools.h"
 #include <cassert>
-
+#include <iomanip>
+#include <sstream> 
 
 using namespace std;
 
@@ -207,6 +208,30 @@ void Tools::servo_stop(modbus_t* mb)
 	modify_DIn(mb, 1, 0);
 }
 
+//打印当前位置
+void Tools::show_position(modbus_t* mb)
+{
+	uint16_t tab_reg[2];
+	int16_t tab_reg1[2];
+	string trans;
+	int decimal;
+	int regs = modbus_read_registers(mb, 0x0014, 2, tab_reg);
+	tab_reg1[1] = tab_reg[1];
+	if (tab_reg1[1] < 0) {
+		tab_reg1[1] = -tab_reg1[1];
+		trans = DecIntToHexStr(tab_reg1[1]);
+		decimal = -transData(trans);
+	}
+	else {
+		trans = DecIntToHexStr(tab_reg1[1]);
+		decimal = transData(trans);
+	}
+	//low = tab_reg[0] + 65536;
+	int pos_now = decimal + tab_reg[0];
+	cout << "当前位置为" << pos_now << endl;
+}
+
+//获取当前时间
 string getCurDate()
 {
 	SYSTEMTIME systime;
@@ -256,6 +281,7 @@ string getCurDate()
 //显示监控寄存器数据
 void show_status(void* mb) {
 	uint16_t tab_reg[2];
+	int16_t tab_reg3[2];
 	uint16_t tab_reg2[2];
 	string trans;
 	long long int decimal;
@@ -266,16 +292,28 @@ void show_status(void* mb) {
 	Status res = dbSqlSelect(sql);
 	int maxid = res.id[0];
 	while (1) {
-		Sleep(1000);
+		//Sleep(1000);
 		maxid++;
 		int regs = modbus_read_registers(modb, 0x0012, 2, tab_reg);
-		trans = DecIntToHexStr(tab_reg[1]);
-		decimal = transData(trans);
-		speed = to_string(decimal + tab_reg[0]);
+		tab_reg3[1] = tab_reg[1];
+		if (tab_reg3[1] < 0) {
+			speed = to_string(((float)(tab_reg[0] - 65536) / 10));
+		}
+		else {
+			speed = to_string(((float)(tab_reg[0]) / 10));
+		}		
 		cout << "状态监控寄存器1的数据为:" << speed << "clock" << getCurDate() << endl;
 		regs = modbus_read_registers(modb, 0x0014, 2, tab_reg2);
-		trans = DecIntToHexStr(tab_reg2[1]);
-		decimal = transData(trans);
+		tab_reg3[1] = tab_reg2[1];
+		if (tab_reg3[1] < 0) {
+			tab_reg3[1] = -tab_reg3[1];
+			trans = DecIntToHexStr(tab_reg3[1]);
+			decimal = -transData(trans);
+		}
+		else {
+			trans = DecIntToHexStr(tab_reg3[1]);
+			decimal = transData(trans);
+		}
 		pulse = to_string(decimal + tab_reg2[0]);
 		cout << "状态监控寄存器2的数据为:" << pulse << "clock" << getCurDate() << endl;
 		
@@ -289,7 +327,7 @@ void show_status(void* mb) {
 	}
 }
 
-
+//32位寄存器高16为数据变换
 int transData(string str)
 {
 	str = str + "0000";
@@ -298,6 +336,7 @@ int transData(string str)
 	return res;
 }
 
+//s十进制转16进制string
 string DecIntToHexStr(long long num)
 {
 	string str;
@@ -310,4 +349,112 @@ string DecIntToHexStr(long long num)
 	else
 		str += ('A' + left - 10);
 	return str;
+}
+
+//P
+int positionPID(int position, modbus_t *mb) {
+	uint16_t tab_reg[2];
+	string trans;
+	int decimal;
+	int pos_now = 0;
+	int pos_err = 0;
+	int kp = 1;
+	int speed = 0;
+	int regs = modbus_read_registers(mb, 0x0014, 2, tab_reg);
+	trans = DecIntToHexStr(tab_reg[1]);
+	decimal = transData(trans);
+	pos_now = decimal + tab_reg[0];
+	pos_err = position - pos_now;
+	speed = pos_err/10000 * kp;
+	if (speed > 600 ) {
+		speed = 600;
+	}
+	else if (speed < -600) {
+		speed = -600;
+	}
+	else if (speed >= 0 && speed <10) {
+		speed = 1;
+	
+	}
+	else if (speed > -10 && speed <= 0) {
+		speed = -1;
+	}
+	return speed;
+}
+
+//增量PID
+int positionPIDC(int position, modbus_t* mb, PID_incremental pid1) {
+	uint16_t tab_reg[2];
+	string trans;
+	int decimal;
+	int pos_now = 0;
+	int pos_err = 0;
+	int kp = 1;
+	float speed_incre = 0.0;
+	int regs = modbus_read_registers(mb, 0x0014, 2, tab_reg);
+	trans = DecIntToHexStr(tab_reg[1]);
+	decimal = transData(trans);
+	pos_now = decimal + tab_reg[0];
+	speed_incre = pid1.pid_control(position, pos_now);
+	return int(speed_incre);
+}
+
+//位置PID
+int positionPIDP(int position, modbus_t* mb, PID_position pid1) {
+	uint16_t tab_reg[2];
+	int16_t tab_reg1;
+	string trans;
+	int decimal;
+	int pos_now = 0;
+	int pos_err = 0;
+	int kp = 1;
+	float speed_incre = 0.0;
+	int regs = modbus_read_registers(mb, 0x0014, 2, tab_reg);
+	tab_reg1 = tab_reg[1];
+	if (tab_reg1 < 0) {
+		tab_reg1 = -tab_reg1;
+		trans = DecIntToHexStr(tab_reg1);
+		decimal = -transData(trans);
+	}
+	else {
+		trans = DecIntToHexStr(tab_reg1);
+		decimal = transData(trans);
+	}
+	pos_now = decimal + tab_reg[0];
+	speed_incre = pid1.pid_control(position, pos_now);
+	return int(speed_incre);
+}
+
+//事件驱动策略
+int netControl(int *speed_now, int *speed_last) {
+	double percent = 0.0;
+	int err = 0;
+	int flag;//是否传输标志位
+	if (*speed_last != 0) {
+		/*if (*speed_last == *speed_now) {
+			flag = 0;
+		}
+		else {
+			flag = 1;
+			*speed_last = *speed_now;
+		}*/
+		err = *speed_now - *speed_last;
+		percent = float(err) / *speed_last;
+		cout << percent << endl;
+		if (-0.1 < percent && percent < 0.1) {
+			flag = 0;
+		}
+		else {
+			flag = 1;
+			*speed_last = *speed_now;
+		}
+	}else if(*speed_now == 0){
+		flag = 2;
+		*speed_last = 0;
+	}
+	else{
+		flag = 1;
+		*speed_last = *speed_now;
+	}
+	return flag;	
 }

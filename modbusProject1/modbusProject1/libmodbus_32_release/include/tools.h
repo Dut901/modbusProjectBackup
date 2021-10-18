@@ -1,4 +1,6 @@
 #include "modbus.h"
+#include "PID_incremtental.h"
+#include "PID_position.h"
 typedef std::uint64_t hash_t;
 constexpr hash_t prime = 0x100000001B3ull;
 constexpr hash_t basis = 0xCBF29CE484222325ull;
@@ -10,6 +12,8 @@ static enum StringValue {
 	evStringValue2,
 	evStringValue3,
 	status,
+	pid,
+	pos,
 	evEnd
 };
 
@@ -28,6 +32,8 @@ void Initialize()
 	s_mapStringValues["start"] = evStringValue2;
 	s_mapStringValues["stop"] = evStringValue3;
 	s_mapStringValues["status"] = status;
+	s_mapStringValues["pid"] = pid;
+	s_mapStringValues["pos"] = pos;
 	s_mapStringValues["end"] = evEnd;
 
 	cout << "s_mapStringValues contains "
@@ -46,5 +52,12 @@ public :
 	void servo_start(modbus_t* mb);
 	void set_speed(modbus_t* mb, int speed_num);
 	void servo_stop(modbus_t* mb);
+	void show_position(modbus_t* mb);
 };
 void show_status(void* mb);
+int positionPID(int position, modbus_t* mb);
+int positionPIDC(int position, modbus_t* mb, PID_incremental pid1);
+int positionPIDP(int position, modbus_t* mb, PID_position pid1);
+int netControl(int* speed_now, int* speed_last);
+string DecIntToHexStr(long long num);
+int transData(string str);

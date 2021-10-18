@@ -48,6 +48,12 @@
     <ClInclude Include="libmodbus_32_release\include\stdAfx.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="libmodbus_32_release\include\PID_incremtental.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="libmodbus_32_release\include\PID_position.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="libmodbus_32_release\bin\modbus.dll" />
@@ -66,6 +72,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="libmodbus_32_release\tools.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="libmodbus_32_release\PID_incremtental.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="libmodbus_32_release\PID_position.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
