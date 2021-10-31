@@ -13,12 +13,16 @@
 #include <cassert>
 #include <iomanip>
 #include <sstream> 
+#include <thread>
+#include "include/coordinate.h"
 
 using namespace std;
+
 
 string getCurDate();
 string DecIntToHexStr(long long num);
 int transData(string str);
+
 
 //更改相应的DIn的值
 void modify_DIn(modbus_t* mb, int reg_num, int bit) {
@@ -80,6 +84,25 @@ modbus_t* Tools::modbus_con(int slave_id)
 	}
 
 	//modbus_set_debug(mb, 1);						//设置1可看到调试信息
+	modbus_set_slave(mc, slave_id);						//设置modbus从机地址 
+	if (modbus_connect(mc) == -1)					//打开modbus连接
+	{
+		fprintf(stderr, "Connection failed:%s\n", modbus_strerror(errno));
+		return NULL;
+	}
+	return mc;
+}
+
+modbus_t* Tools::modbus_con_y(int slave_id)
+{
+	modbus_t* mc = modbus_new_rtu("COM7", 115200, 'N', 8, 2);   //相同的端口只能同时打开一个 
+	if (mc == NULL)
+	{
+		fprintf(stderr, "Unable to allocate libmodbus contex\n");
+		return NULL;
+	}
+
+	//modbus_set_debug(mc, 1);						//设置1可看到调试信息
 	modbus_set_slave(mc, slave_id);						//设置modbus从机地址 
 	if (modbus_connect(mc) == -1)					//打开modbus连接
 	{
@@ -228,7 +251,7 @@ void Tools::show_position(modbus_t* mb)
 	}
 	//low = tab_reg[0] + 65536;
 	int pos_now = decimal + tab_reg[0];
-	cout << "当前位置为" << pos_now << endl;
+	cout << mb->slave <<"当前位置为" << pos_now << endl;
 }
 
 //获取当前时间
@@ -279,22 +302,30 @@ string getCurDate()
 }*/
 
 //显示监控寄存器数据
-void show_status(void* mb) {
+void show_status(modbus_t* mb) {
 	uint16_t tab_reg[2];
 	int16_t tab_reg3[2];
 	uint16_t tab_reg2[2];
 	string trans;
+	string table_name = "";
 	long long int decimal;
 	string pulse, speed;
-	modbus_t* modb = (modbus_t*)mb;
-	databaseCon();
-	char sql[200] = "select max(id) from dbo.servo_status";
-	Status res = dbSqlSelect(sql);
+	char sql[200] = "";
+	RETCODE ret = databaseCon();
+	if (mb->slave == 3) {
+		table_name = "dbo.servo_status_x";
+	}
+	else if (mb->slave == 4) {
+		table_name = "dbo.servo_status_y";
+	}
+	string sqlStr = "select max(id) from " + table_name;
+	strcpy_s(sql, sqlStr.c_str());
+	Status res = dbSqlSelect(sql, ret);
 	int maxid = res.id[0];
 	while (1) {
 		//Sleep(1000);
 		maxid++;
-		int regs = modbus_read_registers(modb, 0x0012, 2, tab_reg);
+		int regs = modbus_read_registers(mb, 0x0012, 2, tab_reg);
 		tab_reg3[1] = tab_reg[1];
 		if (tab_reg3[1] < 0) {
 			speed = to_string(((float)(tab_reg[0] - 65536) / 10));
@@ -302,8 +333,8 @@ void show_status(void* mb) {
 		else {
 			speed = to_string(((float)(tab_reg[0]) / 10));
 		}		
-		cout << "状态监控寄存器1的数据为:" << speed << "clock" << getCurDate() << endl;
-		regs = modbus_read_registers(modb, 0x0014, 2, tab_reg2);
+		//cout << "状态监控寄存器1的数据为:" << speed << "clock" << getCurDate() << endl;
+		regs = modbus_read_registers(mb, 0x0014, 2, tab_reg2);
 		tab_reg3[1] = tab_reg2[1];
 		if (tab_reg3[1] < 0) {
 			tab_reg3[1] = -tab_reg3[1];
@@ -315,11 +346,11 @@ void show_status(void* mb) {
 			decimal = transData(trans);
 		}
 		pulse = to_string(decimal + tab_reg2[0]);
-		cout << "状态监控寄存器2的数据为:" << pulse << "clock" << getCurDate() << endl;
+		//cout << "状态监控寄存器2的数据为:" << pulse << "clock" << getCurDate() << endl;
 		
-		string sql1 = "insert into dbo.servo_status values(" + to_string(maxid) + "," + speed + "," + pulse + ",'" + getCurDate() + "')";
+		string sql1 = "insert into " + table_name + " values(" + to_string(maxid) + "," + speed + "," + pulse + "," + "0,0,'" + getCurDate() + "')";
 		strcpy_s(sql, sql1.c_str());
-		dbSqlEdit(sql);
+		dbSqlEdit(sql, ret);
 
 		if (_kbhit()) {
 			break;
@@ -335,6 +366,8 @@ int transData(string str)
 	int res = strtol(str.c_str() , nullptr, 16);
 	return res;
 }
+
+
 
 //s十进制转16进制string
 string DecIntToHexStr(long long num)
@@ -431,23 +464,22 @@ int netControl(int *speed_now, int *speed_last) {
 	int err = 0;
 	int flag;//是否传输标志位
 	if (*speed_last != 0) {
-		/*if (*speed_last == *speed_now) {
+		if (*speed_last == *speed_now) {
 			flag = 0;
 		}
 		else {
 			flag = 1;
 			*speed_last = *speed_now;
-		}*/
-		err = *speed_now - *speed_last;
+		}
+		/*err = *speed_now - *speed_last;
 		percent = float(err) / *speed_last;
-		cout << percent << endl;
 		if (-0.1 < percent && percent < 0.1) {
 			flag = 0;
 		}
 		else {
 			flag = 1;
 			*speed_last = *speed_now;
-		}
+		}*/
 	}else if(*speed_now == 0){
 		flag = 2;
 		*speed_last = 0;
@@ -458,3 +490,162 @@ int netControl(int *speed_now, int *speed_last) {
 	}
 	return flag;	
 }
+
+//位置给定
+void set_position(modbus_t* mb, int pulse)
+{
+	Tools tool;
+	tool.servo_start(mb);
+	int i = 0;
+	int speedPID;
+	int speedLast = 0;
+	int flag = 0;
+	int* speed_P = &speedPID;
+	int* speed_L = &speedLast;
+	PID_position pid1(0.01, 0, 0);
+
+	
+	
+	while (1) {
+		Sleep(20);
+
+		
+
+
+		//PI 增量型
+		speedPID = positionPIDP(pulse, mb, pid1);
+
+		
+
+		//speedPID += speed_incre;
+		if (speedPID > 600) {
+			speedPID = 600;
+		}
+		else if (speedPID < -600) {
+			speedPID = -600;
+		}
+		
+		flag = netControl(speed_P, speed_L);
+		if (flag == 1) {
+			//saveDataToDatabase(mb, pulse, speedPID);
+			tool.set_speed(mb, speedPID);
+			i++;
+		}
+		else if (flag == 2) {
+			//saveDataToDatabase(mb, pulse, 0);
+			tool.servo_stop(mb);
+			tool.show_position(mb);
+			i = 0;
+			break;
+		}
+		else if (flag == 0) {
+			//saveDataToDatabase(mb, pulse, speedLast);
+		}
+		if (_kbhit()) {
+			break;
+		}
+	}
+}
+
+//去除str中的ch
+string stringTrans(string str, char ch) {
+	while (str.find(ch) != -1) {
+		str.erase(str.find(ch), 1);
+	}
+	return str;
+}
+//按分隔符分割
+void SplitString(const string& s, vector<string>& v, const string& c)
+{
+	string::size_type pos1, pos2;
+	pos2 = s.find(c);
+	pos1 = 0;
+	while (string::npos != pos2)
+	{
+		v.push_back(s.substr(pos1, pos2 - pos1));
+
+		pos1 = pos2 + c.size();
+		pos2 = s.find(c, pos1);
+	}
+	if (pos1 != s.length())
+		v.push_back(s.substr(pos1));
+}
+
+//将运行数据保存至数据库 pulse_in 给定脉冲  speed_in 速度信号
+void saveDataToDatabase(modbus_t* mb, int pulse_in, float speed_in) {
+	uint16_t tab_reg[2];
+	int16_t tab_reg3[2];
+	uint16_t tab_reg2[2];
+	string trans;
+	string table_name;
+	long long int decimal;
+	string pulse, speed;
+	char sql[500] = "";
+	RETCODE ret = databaseCon();
+	modbus_t* modb = (modbus_t*)mb;
+	if (mb->slave == 3) {
+		table_name = "dbo.servo_status_x";
+	}
+	else if (mb->slave == 4) {
+		table_name = "dbo.servo_status_y";
+	}
+	string sqlStr = "select max(id) from " + table_name;
+	strcpy_s(sql, sqlStr.c_str());
+	Status res = dbSqlSelect(sql, ret);
+	int maxid = res.id[0];
+	maxid++;
+	int regs = modbus_read_registers(modb, 0x0012, 2, tab_reg);
+	tab_reg3[1] = tab_reg[1];
+	if (tab_reg3[1] < 0) {
+		speed = to_string(((float)(tab_reg[0] - 65536) / 10));
+	}
+	else {
+		speed = to_string(((float)(tab_reg[0]) / 10));
+	}
+	regs = modbus_read_registers(modb, 0x0014, 2, tab_reg2);
+	tab_reg3[1] = tab_reg2[1];
+	if (tab_reg3[1] < 0) {
+		tab_reg3[1] = -tab_reg3[1];
+		trans = DecIntToHexStr(tab_reg3[1]);
+		decimal = -transData(trans);
+	}
+	else {
+		trans = DecIntToHexStr(tab_reg3[1]);
+		decimal = transData(trans);
+	}
+	pulse = to_string(decimal + tab_reg2[0]);
+	string sql1 = "insert into " + table_name +" values(" + to_string(maxid) + "," + speed + "," + pulse + "," + to_string(speed_in) + "," + to_string(pulse_in) + ",'" + getCurDate() + "')";
+	strcpy_s(sql, sql1.c_str());
+	dbSqlEdit(sql, ret);
+}
+
+//创建线程控制xy电机到达位置
+void xyPosition(modbus_t* mbx, modbus_t* mby, uint32_t pulse_pos[2]) {
+	thread x(show_status,mbx);
+	x.detach();
+	/*thread y(show_status, mby);
+	y.detach();*/
+	thread t(set_position, mbx, pulse_pos[0]);
+	t.detach();
+	thread n(set_position, mby, pulse_pos[1]);
+	n.detach();
+
+	//GetExitCodeThread(t,);
+
+}
+
+//根据坐标控制位置
+void xyCoo(modbus_t* mbx, modbus_t* mby, string cooString) {
+	uint32_t position_pulse[2];
+	vector<string> v;
+	cooString = stringTrans(cooString, '(');
+	cooString = stringTrans(cooString, ')');
+	SplitString(cooString, v, ","); //可按多个字符来分隔;
+	Coordinate cooStruct;
+	cooStruct.x = atof(v[0].c_str());
+	cooStruct.y = atof(v[1].c_str());
+	cooAnalysis(cooStruct, position_pulse);
+	xyPosition(mbx, mby, position_pulse);
+	v.clear();
+}
+

@@ -143,6 +143,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="libmodbus_32_release\include\config.h" />
+    <ClInclude Include="libmodbus_32_release\include\coordinate.h" />
     <ClInclude Include="libmodbus_32_release\include\database.h" />
     <ClInclude Include="libmodbus_32_release\include\modbus-private.h" />
     <ClInclude Include="libmodbus_32_release\include\modbus-rtu-private.h" />
@@ -166,6 +167,7 @@
     <Library Include="libmodbus_32_release\lib\modbus.lib" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="libmodbus_32_release\coordinate.cpp" />
     <ClCompile Include="libmodbus_32_release\database.cpp" />
     <ClCompile Include="libmodbus_32_release\main.cpp" />
     <ClCompile Include="libmodbus_32_release\tools.cpp" />
